@@ -1,38 +1,139 @@
 const CarRequest = require('../models/CarRequest');
 
-exports.createCarRequest = async (req, res) => {
+
+const createCarRequest = async (req, res) => {
   try {
-    const { carType, carModel, year } = req.body;
+    const { title, description, carModel, budget } = req.body;
+
+    if (title === undefined) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+    if (title === null) {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+    if (title === '') {
+      return res.status(400).json({ message: 'Title is required' });
+    }
+
+    if (description === undefined) {
+      return res.status(400).json({ message: 'Description is required' });
+    }
+    if (description === null) {
+      return res.status(400).json({ message: 'Description is required' });
+    }
+    if (description === '') {
+      return res.status(400).json({ message: 'Description is required' });
+    }
+
+    if (carModel === undefined) {
+      return res.status(400).json({ message: 'Car model is required' });
+    }
+    if (carModel === null) {
+      return res.status(400).json({ message: 'Car model is required' });
+    }
+    if (carModel === '') {
+      return res.status(400).json({ message: 'Car model is required' });
+    }
+
+    if (budget === undefined) {
+      return res.status(400).json({ message: 'Budget is required' });
+    }
+    if (budget === null) {
+      return res.status(400).json({ message: 'Budget is required' });
+    }
+
+  let userId = null;
+    if (req.user !== undefined) {
+      if (req.user !== null) {
+        if (req.user._id !== undefined) {
+          if (req.user._id !== null) {
+            userId = req.user._id;
+          }
+        }
+      }
+    }
+
+    if (userId === null) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
     const newRequest = new CarRequest({
-      requestedBy: req.session.userId,
-      carType,
+      title,
+      description,
       carModel,
-      year,
+      budget,
+      requestedBy: userId
     });
 
     await newRequest.save();
-    res.status(201).json({ message: 'Request submitted', request: newRequest });
+    return res.status(201).json(newRequest);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to submit request' });
+    console.error('Error creating car request:', error);
+    return res.status(500).json({ message: 'An error occurred while creating the request' });
   }
 };
 
-exports.getAllCarRequests = async (req, res) => {
+const getUserCarRequests = async (req, res) => {
   try {
-    const requests = await CarRequest.find().populate('requestedBy', 'username email');
-    res.json(requests);
+    // determine user id
+    let userId = null;
+    if (req.user !== undefined) {
+      if (req.user !== null) {
+        if (req.user._id !== undefined) {
+          if (req.user._id !== null) {
+            userId = req.user._id;
+          }
+        }
+      }
+    }
+
+    if (userId === null) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const requests = await CarRequest.find({ requestedBy: userId }).sort({ createdAt: -1 });
+    return res.status(200).json(requests);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch requests' });
+    console.error('Error fetching user car requests:', error);
+    return res.status(500).json({ message: 'An error occurred while fetching requests' });
   }
 };
 
-exports.updateCarRequestStatus = async (req, res) => {
+
+const deleteCarRequest = async (req, res) => {
   try {
-    const { status } = req.body;
-    const request = await CarRequest.findByIdAndUpdate(req.params.id, { status }, { new: true });
-    if (!request) return res.status(404).json({ error: 'Request not found' });
-    res.json({ message: 'Request status updated', request });
+    const { id } = req.params;
+
+    let userId = null;
+    if (req.user !== undefined) {
+      if (req.user !== null) {
+        if (req.user._id !== undefined) {
+          if (req.user._id !== null) {
+            userId = req.user._id;
+          }
+        }
+      }
+    }
+
+    if (userId === null) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
+    const deleted = await CarRequest.findOneAndDelete({ _id: id, requestedBy: userId });
+
+    if (deleted === null) {
+      return res.status(404).json({ message: 'Request not found or not authorized to delete' });
+    }
+
+    return res.status(200).json({ message: 'Request deleted successfully' });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update request status' });
+    console.error('Error deleting car request:', error);
+    return res.status(500).json({ message: 'An error occurred while deleting the request' });
   }
+};
+
+module.exports = {
+  createCarRequest,
+  getUserCarRequests,
+  deleteCarRequest
 };
